@@ -1,7 +1,36 @@
+# Android / Gradle
+*.iml
+.gradle
+/local.properties
+local.properties
+/build
+**/build/
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+keystore.properties
+*.jks
+*.keystore
 
-# sdk
-sdk/
+# IntelliJ / Android Studio
+.idea/
+*.ipr
+*.iws
 
-# openspec
-.claude/
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local state
+.claude/settings.local.json
+.claude/projects/
+
+# OpenCode local state
 .opencode/
+.claude/
+
