@@ -1,0 +1,22 @@
+schema: spec-driven
+
+context: |
+  Project: GlyphSense - a live music visualizer app for Nothing Phone (3a)
+  Tech stack: Kotlin, Jetpack Compose, Material3, Android SDK (min API 34 / Android 14+)
+  Hardware: Nothing Phone (3a) with 36 individually addressable glyph LEDs in 3 zones:
+    - Zone C: 20 LEDs (indices 0-19), strip from bottom-left to top-right
+    - Zone A: 11 LEDs (indices 20-30), strip from top to bottom
+    - Zone B: 5 LEDs (indices 31-35), small cluster
+  Glyph SDK: Nothing Glyph/Matrix SDK 2.0 (AAR), per-LED brightness via setFrameColors(IntArray)
+  Audio: Microphone input (AudioRecord API) for live ambient sound capture at concerts/festivals
+  Key constraint: Glyph SDK max refresh rate is undocumented - needs empirical testing
+  Architecture: Foreground service for audio capture + glyph control, Compose UI for front-screen visualization
+  Features: Adaptive volume scaling (rolling peak normalization), "party mode" front-screen color blast, home screen widget for quick toggle
+
+rules:
+  proposal:
+    - Keep scope realistic for a first version - core visualizer first, polish later
+    - Clearly separate MVP features from stretch goals
+  tasks:
+    - Break tasks into chunks that can be tested independently
+    - Front-screen visualization and widget are separate from core glyph visualizer
