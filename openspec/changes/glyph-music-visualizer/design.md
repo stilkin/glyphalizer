@@ -120,9 +120,16 @@ The user's primary scenario is festivals/concerts: phone in pocket or on table, 
 
 Simple and performant — no complex particle systems. Just a satisfying color pulse. Activated by a button in the main UI, off by default to save battery.
 
+## Spike Findings (validated)
+
+- **Refresh rate**: ~2291 fps achievable — non-blocking IPC, no throttling. Target 30 fps is trivially met.
+- **Brightness range**: 0–4095 (12-bit). Value of 255 produces visibly dim LEDs.
+- **Per-LED control**: `GlyphManager.setFrameColors(IntArray(36))` works on Phone (3a).
+- **LED mapping confirmed**: C=0-19 (diagonal strip through top-left), A=20-30 (vertical strip), B=31-35 (small cluster).
+
 ## Risks / Trade-offs
 
-- **[Glyph SDK refresh rate unknown]** → First task should be a spike to measure max achievable fps. If <15fps, visualization will feel sluggish; may need to reduce to pulsing patterns rather than smooth animations.
+- **[Glyph SDK refresh rate]** → RESOLVED: 2291 fps measured, no constraint.
 - **[Battery drain]** → Continuous mic + LED updates. Mitigated by screen-off default, and we can offer a lower refresh rate option.
 - **[Mic clipping at high SPL]** → Phone mic has hardware limits. The rolling normalizer handles this at the software level, but severely clipped audio means less frequency discrimination. Acceptable for the use case — it's a light show, not audio analysis.
 - **[Foreground service notification]** → Android requires a persistent notification. Slight UX annoyance but unavoidable. We'll make it useful (show status, quick stop action).

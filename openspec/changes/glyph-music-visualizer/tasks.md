@@ -6,9 +6,9 @@
 
 ## 2. Glyph SDK Spike
 
-- [ ] 2.1 Create a minimal test Activity that initializes GlyphManager, opens a session, and toggles a single LED on/off
-- [ ] 2.2 Test `setFrameColors(IntArray)` with varying brightness values to determine the valid brightness range
-- [ ] 2.3 Measure max achievable update rate by looping setFrameColors calls and timing — document the result
+- [x] 2.1 Create a minimal test Activity that initializes GlyphManager, opens a session, and toggles a single LED on/off
+- [x] 2.2 Test `setFrameColors(IntArray)` with varying brightness values to determine the valid brightness range
+- [x] 2.3 Measure max achievable update rate by looping setFrameColors calls and timing — document the result
 
 ## 3. Audio Capture Pipeline
 
