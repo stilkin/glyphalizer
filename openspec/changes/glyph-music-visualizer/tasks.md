@@ -12,8 +12,8 @@
 
 ## 3. Audio Capture Pipeline
 
-- [ ] 3.1 Implement RECORD_AUDIO runtime permission request flow with explanation UI on denial
-- [ ] 3.2 Create AudioCapture class: initializes AudioRecord (44100 Hz, mono, PCM 16-bit), reads buffers of 2048 samples in a coroutine loop
+- [x] 3.1 Implement RECORD_AUDIO runtime permission request flow with explanation UI on denial
+- [x] 3.2 Create AudioCapture class: initializes AudioRecord (44100 Hz, mono, PCM 16-bit), reads buffers of 2048 samples in a coroutine loop
 - [ ] 3.3 Implement FFT processor that takes a 2048-sample buffer and outputs frequency magnitudes
 - [ ] 3.4 Implement frequency band splitter: extract bass energy (20–250 Hz), 20 spectrum sub-bands (for zone C), and transient energy for beat detection
 - [ ] 3.5 Implement beat detector using transient energy threshold crossing

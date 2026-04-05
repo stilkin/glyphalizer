@@ -1,9 +1,13 @@
 package be.pocito.glyphsense
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,12 +17,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,6 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import be.pocito.glyphsense.audio.AudioCapture
+import be.pocito.glyphsense.audio.peakAmplitude
 import be.pocito.glyphsense.glyph.GlyphController
 import be.pocito.glyphsense.glyph.GlyphController.Companion.LED_COUNT_PHONE_3A
 import be.pocito.glyphsense.ui.theme.GlyphSenseTheme
@@ -52,18 +62,38 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Spike UI for Task Group 2: test Glyph SDK lifecycle, per-LED brightness control,
- * and measure the max achievable refresh rate on the actual device.
+ * Spike UI: test Glyph SDK lifecycle, per-LED brightness, refresh rate, and mic capture.
  */
 @Composable
 fun SpikeScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val controller = remember { GlyphController(context) }
+    val capture = remember { AudioCapture() }
 
     var sessionOpen by remember { mutableStateOf(false) }
     val logLines = remember { mutableStateOf(listOf<String>()) }
-    val scrollState = rememberScrollState()
+
+    var micPermissionGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var micRunning by remember { mutableStateOf(false) }
+    var micPeak by remember { mutableIntStateOf(0) } // 0..32767
+    var micPeakPct by remember { mutableIntStateOf(0) } // 0..100
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        micPermissionGranted = granted
+        val ts = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
+        logLines.value = (listOf(
+            "[$ts] RECORD_AUDIO permission " + if (granted) "granted" else "DENIED"
+        ) + logLines.value).take(200)
+    }
 
     fun log(line: String) {
         val ts = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
@@ -73,20 +103,30 @@ fun SpikeScreen(modifier: Modifier = Modifier) {
     DisposableEffect(Unit) {
         log("Device: ${controller.deviceName()}")
         onDispose {
+            capture.stop()
             controller.release()
+        }
+    }
+
+    // Observe mic buffers when capturing
+    LaunchedEffect(micRunning) {
+        if (micRunning) {
+            capture.buffers.collect { buf ->
+                val p = buf.peakAmplitude()
+                micPeak = p
+                micPeakPct = (p * 100 / 32767).coerceIn(0, 100)
+            }
         }
     }
 
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            "Glyph SDK Spike",
-            style = MaterialTheme.typography.headlineSmall,
-        )
+        Text("Glyph SDK Spike", style = MaterialTheme.typography.headlineSmall)
         Text(
             "Session: ${if (sessionOpen) "OPEN" else "closed"}",
             style = MaterialTheme.typography.bodyMedium,
@@ -100,10 +140,7 @@ fun SpikeScreen(modifier: Modifier = Modifier) {
             onClick = {
                 log("init() + openSession() ...")
                 controller.init(
-                    onReady = {
-                        sessionOpen = true
-                        log("Session OPEN")
-                    },
+                    onReady = { sessionOpen = true; log("Session OPEN") },
                     onError = { err -> log("ERROR: $err") },
                 )
             },
@@ -120,15 +157,14 @@ fun SpikeScreen(modifier: Modifier = Modifier) {
         ) { Text("Release Session") }
 
         HorizontalDivider()
-        Text("Tests", style = MaterialTheme.typography.titleMedium)
+        Text("LED Tests", style = MaterialTheme.typography.titleMedium)
 
         Button(
             modifier = Modifier.fillMaxWidth(),
             enabled = sessionOpen,
             onClick = {
-                // Light only A_1 at full brightness
                 val arr = IntArray(LED_COUNT_PHONE_3A)
-                arr[20] = 4095 // A_1 is index 20 per SDK README
+                arr[20] = 4095
                 controller.setFrameColors(arr)
                 log("Single LED (A_1, idx 20) @ 4095")
             },
@@ -148,7 +184,6 @@ fun SpikeScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             enabled = sessionOpen,
             onClick = {
-                // Linear gradient 0..4095 across 36 LEDs to test brightness range
                 val arr = IntArray(LED_COUNT_PHONE_3A) { i ->
                     (i * 4095 / (LED_COUNT_PHONE_3A - 1))
                 }
@@ -161,7 +196,6 @@ fun SpikeScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             enabled = sessionOpen,
             onClick = {
-                // Try lower brightness values to see the range
                 val arr = IntArray(LED_COUNT_PHONE_3A) { 255 }
                 controller.setFrameColors(arr)
                 log("All LEDs @ 255 (low test)")
@@ -252,20 +286,60 @@ fun SpikeScreen(modifier: Modifier = Modifier) {
         ) { Text("Benchmark refresh rate (3s)") }
 
         HorizontalDivider()
+        Text("Microphone", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Permission: " + if (micPermissionGranted) "granted" else "NOT granted",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !micPermissionGranted,
+            onClick = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+        ) { Text("Request mic permission") }
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            enabled = micPermissionGranted && !micRunning,
+            onClick = {
+                capture.start()
+                micRunning = capture.isRunning()
+                log(if (micRunning) "Mic capture started" else "Mic capture FAILED to start")
+            },
+        ) { Text("Start mic capture") }
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            enabled = micRunning,
+            onClick = {
+                capture.stop()
+                micRunning = false
+                micPeak = 0
+                micPeakPct = 0
+                log("Mic capture stopped")
+            },
+        ) { Text("Stop mic capture") }
+
+        if (micRunning) {
+            Text(
+                "Peak: $micPeak / 32767  ($micPeakPct%)",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            LinearProgressIndicator(
+                progress = { micPeakPct / 100f },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        HorizontalDivider()
         Text("Log", style = MaterialTheme.typography.titleMedium)
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(scrollState),
-        ) {
-            logLines.value.forEach { line ->
-                Text(
-                    line,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Start,
-                )
-            }
+        logLines.value.forEach { line ->
+            Text(
+                line,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Start,
+            )
         }
     }
 }
@@ -277,8 +351,8 @@ private data class BenchmarkResult(
 )
 
 /**
- * Calls setFrameColors in a tight loop for [durationMs] milliseconds.
- * Animates a single-LED "runner" so we can visually confirm something's happening.
+ * Calls setFrameColors in a tight loop for [durationMs] milliseconds,
+ * animating a single-LED "runner" so we visually confirm something's happening.
  */
 private fun benchmarkRefreshRate(
     controller: GlyphController,
@@ -291,7 +365,6 @@ private fun benchmarkRefreshRate(
     var now = start
     while (now < deadline) {
         val idx = frames % LED_COUNT_PHONE_3A
-        // clear previous, light current
         for (i in arr.indices) arr[i] = 0
         arr[idx] = 4095
         controller.setFrameColors(arr)
