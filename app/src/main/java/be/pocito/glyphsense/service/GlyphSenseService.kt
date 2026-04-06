@@ -19,7 +19,10 @@ import be.pocito.glyphsense.audio.AudioAnalyzer
 import be.pocito.glyphsense.audio.AudioCapture
 import be.pocito.glyphsense.glyph.GlyphController
 import be.pocito.glyphsense.glyph.GlyphDriver
+import be.pocito.glyphsense.model.DeviceProfile
+import be.pocito.glyphsense.model.SettingsStore
 import be.pocito.glyphsense.model.VisualizerSettings
+import be.pocito.glyphsense.widget.GlyphSenseWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,7 +51,7 @@ class GlyphSenseService : Service() {
     companion object {
         private const val TAG = "GlyphSenseService"
         private const val CHANNEL_ID = "glyphsense_foreground"
-        private const val CHANNEL_NAME = "GlyphSense visualizer"
+        private const val CHANNEL_NAME = "BeatFlare visualizer"
         private const val NOTIF_ID = 1001
 
         private const val ACTION_START = "be.pocito.glyphsense.action.START"
@@ -70,9 +73,23 @@ class GlyphSenseService : Service() {
         private val _settings = MutableStateFlow(VisualizerSettings())
         val settings: StateFlow<VisualizerSettings> = _settings.asStateFlow()
 
+        private var appContext: Context? = null
+
         fun updateSettings(block: (VisualizerSettings) -> VisualizerSettings) {
             _settings.update(block)
+            appContext?.let { SettingsStore.save(it, _settings.value) }
         }
+
+        /** Load persisted settings without requiring the service to be running.
+         *  Called from main thread only (LaunchedEffect in MainScreen, onCreate in service). */
+        fun loadSettingsIfNeeded(context: Context) {
+            if (appContext == null) {
+                appContext = context.applicationContext
+                _settings.value = SettingsStore.load(context.applicationContext)
+            }
+        }
+
+        val isNothingDevice: Boolean = GlyphController.isNothingDevice()
 
         fun intentStart(context: Context): Intent =
             Intent(context, GlyphSenseService::class.java).setAction(ACTION_START)
@@ -81,11 +98,11 @@ class GlyphSenseService : Service() {
             Intent(context, GlyphSenseService::class.java).setAction(ACTION_STOP)
     }
 
-    private lateinit var controller: GlyphController
+    private var controller: GlyphController? = null
     private lateinit var capture: AudioCapture
     private lateinit var analyzer: AudioAnalyzer
     private lateinit var driver: GlyphDriver
-
+    private var deviceProfile: DeviceProfile? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var pipelineJob: Job? = null
 
@@ -93,11 +110,16 @@ class GlyphSenseService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "onCreate")
-        controller = GlyphController(applicationContext)
+        Log.d(TAG, "onCreate (nothingDevice=$isNothingDevice)")
+        appContext = applicationContext
+        _settings.value = SettingsStore.load(applicationContext)
+        deviceProfile = DeviceProfile.detect()
+        Log.d(TAG, "Device profile: ${deviceProfile?.name ?: "non-Nothing"}")
+        if (isNothingDevice) controller = GlyphController(applicationContext)
         capture = AudioCapture()
-        analyzer = AudioAnalyzer()
-        driver = GlyphDriver()
+        val spectrumBands = deviceProfile?.spectrumBands ?: 20
+        analyzer = AudioAnalyzer(spectrumBands = spectrumBands)
+        driver = GlyphDriver(deviceProfile ?: DeviceProfile.PHONE_3A)
         createNotificationChannel()
     }
 
@@ -121,7 +143,7 @@ class GlyphSenseService : Service() {
     override fun onDestroy() {
         Log.d(TAG, "onDestroy")
         stopPipeline()
-        controller.release()
+        controller?.release()
         _isRunning.value = false
         scope.coroutineContext[Job]?.cancel()
         super.onDestroy()
@@ -131,7 +153,7 @@ class GlyphSenseService : Service() {
 
     private fun startPipeline() {
         if (pipelineJob != null) return // already running
-        controller.init(
+        controller?.init(
             onReady = { Log.d(TAG, "Glyph session open") },
             onError = { e -> Log.e(TAG, "Glyph init failed: $e") },
         )
@@ -142,12 +164,13 @@ class GlyphSenseService : Service() {
             return
         }
         _isRunning.value = true
+        GlyphSenseWidget.notifyStateChanged(applicationContext)
         pipelineJob = scope.launch {
             try {
                 capture.buffers.collect { buf ->
                     val analysis = analyzer.process(buf)
                     _analysisFlow.tryEmit(analysis)
-                    controller.setFrameColors(driver.render(analysis, _settings.value))
+                    controller?.setFrameColors(driver.render(analysis, _settings.value))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "pipeline error: ${e.message}", e)
@@ -159,8 +182,9 @@ class GlyphSenseService : Service() {
         pipelineJob?.cancel()
         pipelineJob = null
         capture.stop()
-        controller.setFrameColors(driver.blankFrame())
+        controller?.setFrameColors(driver.blankFrame())
         _isRunning.value = false
+        GlyphSenseWidget.notifyStateChanged(applicationContext)
     }
 
     // ─────────────────────────── Notification ───────────────────────────
@@ -183,7 +207,7 @@ class GlyphSenseService : Service() {
         val channel = NotificationChannel(
             CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "GlyphSense audio visualizer running"
+            description = "BeatFlare audio visualizer running"
             setShowBadge(false)
         }
         mgr.createNotificationChannel(channel)
@@ -205,7 +229,7 @@ class GlyphSenseService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("GlyphSense")
+            .setContentTitle("BeatFlare")
             .setContentText("Visualizing audio on glyphs")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)

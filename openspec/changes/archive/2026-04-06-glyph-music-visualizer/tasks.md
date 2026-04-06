@@ -48,6 +48,6 @@
 
 ## 8. Home Screen Widget (Stretch)
 
-- [ ] 8.1 Create an AppWidgetProvider with a simple toggle button layout
-- [ ] 8.2 Implement tap-to-start/stop: send intent to GlyphSenseService
-- [ ] 8.3 Update widget state when service starts/stops (via broadcast)
+- [x] 8.1 Create an AppWidgetProvider with a simple toggle button layout
+- [x] 8.2 Implement tap-to-start/stop: send intent to GlyphSenseService
+- [x] 8.3 Update widget state when service starts/stops (via broadcast)
