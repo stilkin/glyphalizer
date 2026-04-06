@@ -36,8 +36,8 @@
 
 ## 6. Main UI (Controls)
 
-- [ ] 6.1 Create MainActivity with Compose UI: start/stop button, service status indicator
-- [ ] 6.2 Bind to GlyphSenseService and observe running state
+- [x] 6.1 Create MainActivity with Compose UI: start/stop button, service status indicator
+- [x] 6.2 Bind to GlyphSenseService and observe running state
 - [ ] 6.3 Add sensitivity/mode controls if applicable after spike results
 
 ## 7. Front-Screen Visualization (Stretch)
