@@ -20,6 +20,7 @@ import be.pocito.glyphsense.audio.AudioCapture
 import be.pocito.glyphsense.glyph.GlyphController
 import be.pocito.glyphsense.glyph.GlyphDriver
 import be.pocito.glyphsense.model.VisualizerSettings
+import be.pocito.glyphsense.widget.GlyphSenseWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -142,6 +143,7 @@ class GlyphSenseService : Service() {
             return
         }
         _isRunning.value = true
+        GlyphSenseWidget.notifyStateChanged(applicationContext)
         pipelineJob = scope.launch {
             try {
                 capture.buffers.collect { buf ->
@@ -161,6 +163,7 @@ class GlyphSenseService : Service() {
         capture.stop()
         controller.setFrameColors(driver.blankFrame())
         _isRunning.value = false
+        GlyphSenseWidget.notifyStateChanged(applicationContext)
     }
 
     // ─────────────────────────── Notification ───────────────────────────
