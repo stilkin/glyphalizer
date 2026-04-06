@@ -29,7 +29,6 @@ class GlyphController(private val context: Context) {
 
     companion object {
         const val TAG = "GlyphController"
-        const val LED_COUNT_PHONE_3A = 36
 
         /** True if this device is any Nothing Phone model supported by the Glyph SDK. */
         fun isNothingDevice(): Boolean =

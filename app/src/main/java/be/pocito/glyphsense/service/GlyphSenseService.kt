@@ -19,6 +19,7 @@ import be.pocito.glyphsense.audio.AudioAnalyzer
 import be.pocito.glyphsense.audio.AudioCapture
 import be.pocito.glyphsense.glyph.GlyphController
 import be.pocito.glyphsense.glyph.GlyphDriver
+import be.pocito.glyphsense.model.DeviceProfile
 import be.pocito.glyphsense.model.SettingsStore
 import be.pocito.glyphsense.model.VisualizerSettings
 import be.pocito.glyphsense.widget.GlyphSenseWidget
@@ -100,6 +101,7 @@ class GlyphSenseService : Service() {
     private lateinit var capture: AudioCapture
     private lateinit var analyzer: AudioAnalyzer
     private lateinit var driver: GlyphDriver
+    private var deviceProfile: DeviceProfile? = null
 
     private val isNothingDevice = GlyphController.isNothingDevice()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -112,10 +114,13 @@ class GlyphSenseService : Service() {
         Log.d(TAG, "onCreate (nothingDevice=$isNothingDevice)")
         appContext = applicationContext
         _settings.value = SettingsStore.load(applicationContext)
+        deviceProfile = DeviceProfile.detect()
+        Log.d(TAG, "Device profile: ${deviceProfile?.name ?: "non-Nothing"}")
         if (isNothingDevice) controller = GlyphController(applicationContext)
         capture = AudioCapture()
-        analyzer = AudioAnalyzer()
-        driver = GlyphDriver()
+        val spectrumBands = deviceProfile?.spectrumBands ?: 20
+        analyzer = AudioAnalyzer(spectrumBands = spectrumBands)
+        driver = GlyphDriver(deviceProfile ?: DeviceProfile.PHONE_3A)
         createNotificationChannel()
     }
 
