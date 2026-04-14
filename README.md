@@ -1,10 +1,10 @@
-# GlyphSense
+# BeatFlare
 
 A live music visualizer for the **Nothing Phone (3a)** that drives the glyph LEDs from microphone audio. Designed for concerts and festivals -- hold your phone face-down and watch the back light up in sync with the music.
 
 ## What it does
 
-GlyphSense captures audio from the microphone, runs real-time FFT analysis, and maps the frequency spectrum onto the 36 glyph LEDs:
+BeatFlare captures audio from the microphone, runs real-time FFT analysis, and maps the frequency spectrum onto the 36 glyph LEDs:
 
 | Zone | LEDs | Visualization |
 |------|------|---------------|
@@ -27,7 +27,8 @@ The visualizer runs as a foreground service, so it keeps working when the screen
 
 ## Requirements
 
-- Nothing Phone (3a) or (3a) Pro
+- Nothing Phone (1), (2), (2a), (2a) Plus, (3a), (3a) Pro, or (4a) for glyph visualization
+- Any Android 14+ device for front-screen party mode visualization only
 - Android 14+ (API 34+)
 - Glyph debug mode enabled:
   ```bash
@@ -70,9 +71,12 @@ app/src/main/java/be/pocito/glyphsense/
     RollingPeakNormalizer.kt Adaptive normalization with noise floor
   glyph/
     GlyphController.kt      Wraps Nothing GlyphManager lifecycle
-    GlyphDriver.kt          Maps AudioAnalysis -> IntArray(36) LED values
+    GlyphDriver.kt          Maps AudioAnalysis -> LED values via DeviceProfile
   model/
-    VisualizerSettings.kt   Runtime settings (brightness, zone toggles)
+    DeviceProfile.kt        Per-device LED zone configuration
+    PartyTheme.kt           Color themes for party mode
+    SettingsStore.kt        SharedPreferences persistence
+    VisualizerSettings.kt   Runtime settings (brightness, zones, theme)
   service/
     GlyphSenseService.kt    Foreground service owning the pipeline
   ui/
