@@ -5,6 +5,13 @@
 <h1 align="center">BeatFlare</h1>
 
 <p align="center">
+  <a href="https://developer.android.com/about/versions/14"><img src="https://img.shields.io/badge/Android-14%2B-3DDC84?logo=android&logoColor=white" alt="Android 14+" /></a>
+  <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20NC%201.0-blue" alt="License" /></a>
+  <a href="https://ko-fi.com/stilkin"><img src="https://img.shields.io/badge/Ko--fi-F16061?logo=ko-fi&logoColor=white" alt="Ko-fi" /></a>
+</p>
+
+<p align="center">
   A live music visualizer for <strong>Nothing Phones</strong> that drives the glyph LEDs from microphone audio.<br>
   Designed for concerts and festivals -- hold your phone face-down and watch the back light up in sync with the music.
 </p>
@@ -43,11 +50,12 @@ The visualizer runs as a foreground service, so it keeps working when the screen
 
 1. Download [`beatflare.apk`](release/beatflare.apk) from this repository
 2. Transfer it to your phone and install (you may need to allow installs from unknown sources)
-3. Enable glyph debug mode by connecting your phone via USB and running:
+3. **Enable the Glyph SDK on your phone** (required on Android 14-15, not needed on Android 16+):
+   Connect your phone via USB and run:
    ```
    adb shell settings put global nt_glyph_interface_debug_enable 1
    ```
-   *(this expires after 48 hours -- re-run as needed)*
+   This grants third-party apps access to the glyph LEDs. It expires after 48 hours, so you'll need to re-run it periodically. On Android 16+ this restriction was removed by Nothing and the step can be skipped.
 4. Open BeatFlare, grant microphone permission, and hit start
 
 > **Want to build from source?** See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
